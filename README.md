@@ -55,3 +55,53 @@ All sold-listing data is normalized into:
 | listing_day_of_week | str | Day item was listed |
 | listing_time | str | Time of day listed |
 | sold_date | date | Date the item sold |
+
+## Contributing
+
+### First time setup
+
+```bash
+git clone https://github.com/rabahbabaci/ListIQ.git
+cd ListIQ
+python -m venv venv
+source venv/bin/activate        # Mac/Linux
+# venv\Scripts\activate         # Windows
+pip install -r requirements.txt
+cp .env.example .env            # Then add your API credentials if you have them
+```
+
+### Picking up an issue
+
+1. Go to the [Issues tab](https://github.com/rabahbabaci/ListIQ/issues) on GitHub
+2. Browse open issues — they're labeled `code` or `no-code` so you can find what fits
+3. Comment **"I'll take this"** on the one you want so nobody duplicates work
+4. Each issue includes: a description, acceptance criteria, file paths, and a branch name
+
+### Working on it
+
+```bash
+git checkout main
+git pull
+git checkout -b feature/issue-name   # Use the branch name from the issue
+```
+
+Do your work — use whatever tools you like (ChatGPT, Copilot, VS Code, etc). Just follow the file paths and acceptance criteria listed in the issue.
+
+### Submitting your work
+
+```bash
+git add .
+git commit -m "short description of what you did"
+git push origin feature/issue-name
+```
+
+Then go to GitHub and open a **Pull Request**:
+- Add a short description of what you did
+- Reference the issue (e.g., `Closes #3`)
+- Rabah will review and merge
+
+### Three rules
+
+1. **Never push to `main` directly** — it's protected. Everything goes through a PR.
+2. **One issue per branch** — keeps things clean and easy to review.
+3. **Ask in the group chat if you're stuck** — no question is too small.
