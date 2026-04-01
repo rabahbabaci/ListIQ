@@ -132,23 +132,40 @@ def parse_item(item, category_query):
         if currency != "USD":
             return None
 
-        # Extract condition
-        condition = item.get("condition", "Unknown")
-        if isinstance(condition, dict):
-            condition = condition.get("conditionId", "Unknown")
+        # Extract condition — prefer conditionId (structured), fall back to condition string
+        condition_id = item.get("conditionId", "")
+        condition_str = item.get("condition", "")
 
         # Map eBay condition IDs to our schema
-        condition_map = {
+        condition_id_map = {
             "1000": "New",
             "1500": "New",
             "2000": "Like New",
             "2500": "Like New",
+            "2750": "Like New",
+            "2990": "Like New",
             "3000": "Good",
             "4000": "Good",
             "5000": "Fair",
             "6000": "Fair",
         }
-        condition = condition_map.get(str(condition), "Unknown")
+
+        # Map eBay condition strings to our schema
+        condition_str_map = {
+            "new with tags": "New",
+            "new without tags": "Like New",
+            "new with defects": "Like New",
+            "pre-owned - like new": "Like New",
+            "pre-owned - excellent": "Like New",
+            "pre-owned - good": "Good",
+            "pre-owned - fair": "Fair",
+            "pre-owned": "Good",
+        }
+
+        condition = condition_id_map.get(str(condition_id), "")
+        if not condition and isinstance(condition_str, str):
+            condition = condition_str_map.get(condition_str.lower().strip(), "Unknown")
+        condition = condition or "Unknown"
 
         # Extract listing date
         item_creation_date = item.get("itemCreationDate", "")
