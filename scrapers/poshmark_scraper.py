@@ -32,7 +32,7 @@ CATEGORY_PATHS = {
     "denim jacket": "/category/Women-Jackets_&_Coats-Jean_Jackets",
     "midi dress": "/category/Women-Dresses-Midi_Dresses",
     "sneakers": "/category/Women-Shoes-Sneakers",
-    "handbag": "/category/Women-Bags-Satchels",
+    "handbag": "/category/Women-Bags",
     "blazer": "/category/Women-Jackets_&_Coats-Blazers",
     "vintage t-shirt": "/category/Women-Tops-Tees_Short_Sleeve",
     "leather jacket": "/category/Women-Jackets_&_Coats-Leather_Jackets",
