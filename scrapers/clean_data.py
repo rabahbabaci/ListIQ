@@ -16,6 +16,68 @@ import pandas as pd
 import numpy as np
 
 
+# Brand alias map — collapse common variant spellings to a single canonical
+# brand. Applied to all platforms in `clean()`. Lookup is case-insensitive on
+# the alias key but the canonical value is preserved exactly.
+BRAND_ALIASES = {
+    "levis": "Levi's",
+    "levi": "Levi's",
+    "levi strauss": "Levi's",
+    "levi strauss & co": "Levi's",
+    "lauren ralph lauren": "Ralph Lauren",
+    "polo ralph lauren": "Ralph Lauren",
+    "polo by ralph lauren": "Ralph Lauren",
+    "lauren": "Ralph Lauren",
+    "tommy": "Tommy Hilfiger",
+    "tommy jeans": "Tommy Hilfiger",
+    "ck": "Calvin Klein",
+    "calvin klein jeans": "Calvin Klein",
+    "ysl": "Saint Laurent",
+    "yves saint laurent": "Saint Laurent",
+    "louis vuitton lv": "Louis Vuitton",
+    "lv": "Louis Vuitton",
+    "dr martens": "Dr. Martens",
+    "doc martens": "Dr. Martens",
+    "the north face": "The North Face",
+    "north face": "The North Face",
+    "harley davidson": "Harley-Davidson",
+    "abercrombie": "Abercrombie & Fitch",
+    "j crew": "J.Crew",
+    "alo": "Alo Yoga",
+    "ag jeans": "AG Jeans",
+    "ag adriano goldschmied": "AG Jeans",
+    "stüssy": "Stussy",
+    "comme des garçons": "Comme des Garcons",
+    "cdg": "Comme des Garcons",
+    "off white": "Off-White",
+    "a bathing ape": "Bape",
+    "aimé leon dore": "Aime Leon Dore",
+    "hermès": "Hermes",
+    "christian dior": "Dior",
+    "arc'teryx": "Arcteryx",
+    "ll bean": "L.L. Bean",
+    "g star raw": "G-Star",
+    "g-star raw": "G-Star",
+    "st. john": "St John",
+}
+
+
+def normalize_brand(brand):
+    """Map brand variants to a canonical form.
+
+    Case-insensitive on the alias key. Strips leading/trailing whitespace and
+    normalizes curly quotes/apostrophes before lookup. Unknown brands pass
+    through unchanged.
+    """
+    if not isinstance(brand, str):
+        return brand
+    cleaned = brand.strip().replace("\u2019", "'").replace("\u2018", "'")
+    if not cleaned:
+        return brand
+    key = cleaned.lower().rstrip(".")
+    return BRAND_ALIASES.get(key, cleaned)
+
+
 # Condition keyword patterns, checked in priority order.
 # First match wins — e.g. "NWOT" matches before "NWT" because it's checked first.
 CONDITION_PATTERNS = [
@@ -64,6 +126,10 @@ def clean(df):
     # Only overwrite "Unknown" conditions; keep any already-set values
     unknown_mask = (df["condition"] == "Unknown") | df["condition"].isna()
     df.loc[unknown_mask & parsed.notna(), "condition"] = parsed[unknown_mask & parsed.notna()]
+
+    # 5. Normalize brand variants (Levis → Levi's, etc.)
+    if "brand" in df.columns:
+        df["brand"] = df["brand"].apply(normalize_brand)
 
     return df, dropped_price
 
