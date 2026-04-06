@@ -10,38 +10,62 @@ ListIQ is a cross-platform resale intelligence engine ("Should I Sell This?") th
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env  # then fill in eBay API credentials
+playwright install chromium   # required by the eBay scraper
 ```
 
-## Running Scrapers
+## Running the pipeline
 
 ```bash
-# eBay (requires API credentials in .env)
+# 1. Scrape (each script is a standalone CLI: --categories, --limit, --output)
 python scrapers/ebay_scraper.py
-python scrapers/ebay_scraper.py --categories "denim jacket,sneakers" --limit 500
-
-# Poshmark (no API key needed, but scraper is a skeleton — may need Selenium)
 python scrapers/poshmark_scraper.py
-python scrapers/poshmark_scraper.py --categories "denim jacket,sneakers" --limit 500
+# python scrapers/depop_scraper.py    # not built yet
+
+# 2. Clean a raw CSV into the cleaned/ folder
+python scrapers/clean_data.py --input data/raw/<platform>_sold_listings.csv \
+                              --output data/cleaned/<platform>_cleaned.csv
+
+# 3. Merge all per-platform cleaned files into the unified dataset
+python scrapers/merge_data.py
 ```
 
-Output goes to `data/raw/`. Raw data is gitignored; cleaned data lives in `data/cleaned/`.
+Raw scraper output goes to `data/raw/` (gitignored). Cleaned per-platform datasets and the unified `all_platforms.csv` live in `data/cleaned/`.
 
 ## Architecture
 
-**Pipeline stages:** Scrape -> Clean/Normalize -> EDA -> Model -> Demo
+**Pipeline:** Scrape → Clean → Merge → EDA → Model → Demo
 
-- `scrapers/` — One scraper per platform. Each is a standalone CLI script with `--categories`, `--limit`, and `--output` args. All output conforms to a shared schema (see README.md "Data Schema").
+- `scrapers/`
+  - `ebay_scraper.py` — Playwright + `playwright-stealth` scraper of eBay's public completed/sold listings page (`LH_Complete=1&LH_Sold=1`). Two-pass collection per category (recency sort + lowest-price sort, deduped on `item_id`) to broaden `sold_date` coverage.
+  - `poshmark_scraper.py` — Hits Poshmark's public category HTML pages for listing IDs, then `/vm-rest/posts/{id}` for structured data. No API key needed.
+  - `clean_data.py` — Per-platform cleaner: drops zero/null prices, nulls junk `original_list_price`, caps `days_to_sale` at 365, regex-parses condition from titles, normalizes brand variants via `BRAND_ALIASES`.
+  - `merge_data.py` — Reads every `*_cleaned.csv` in `data/cleaned/` (no hardcoded platform list — new platforms auto-include), drops `final_sale_price < $1`, normalizes condition as a safety net, adds `price_discount_pct` and `price_tier`, writes `all_platforms.csv`.
 - `data/raw/` — Gitignored raw CSVs from scrapers.
-- `data/cleaned/` — Normalized datasets used for EDA and modeling.
+- `data/cleaned/` — Per-platform cleaned CSVs + `all_platforms.csv` (unified, used for EDA/modeling).
 - `models/` — Trained model artifacts (gitignored `.pkl`/`.joblib`/`.h5`).
 - `notebooks/` — Jupyter notebooks for EDA and experimentation.
 - `demo/` — Streamlit app for the seller intelligence report.
 
-## Key Details
+## Shared schema
 
-- eBay scraper uses OAuth2 client credentials flow via the Browse API. Credentials loaded from `.env` via `python-dotenv`.
-- Poshmark scraper is incomplete — it's a skeleton using BeautifulSoup on public pages. Poshmark renders dynamically, so it likely needs Selenium/Playwright or internal API endpoints.
-- Depop scraper does not exist yet.
-- Brand extraction from listing titles uses a hardcoded known-brands list in `ebay_scraper.py:extract_brand()`.
-- All scraped data normalizes to a common schema with fields: platform, item_category, brand, condition, final_sale_price, original_list_price, days_to_sale, listing_day_of_week, listing_time, sold_date.
+Every per-platform cleaned CSV and `all_platforms.csv` shares these columns:
+
+`platform, item_category, brand, condition, final_sale_price, original_list_price, days_to_sale, listing_day_of_week, listing_time, sold_date, title, item_id, image_url, days_to_sale_outlier`
+
+The merged file additionally has: `price_discount_pct`, `price_tier` (`budget` <$20, `mid` $20–75, `premium` $75–200, `luxury` >$200).
+
+## Known data characteristics
+
+- **eBay rows have null `days_to_sale`, `listing_day_of_week`, `listing_time`, and `original_list_price`** — eBay's search-results card layout doesn't expose listing dates or strikethrough prices. Recovering them would require visiting each listing detail page. `price_discount_pct` is therefore null for all eBay rows.
+- **eBay scraper currently captures auction starting bids** ($0.99) for unbid auctions because it parses the search-card price. The merge step's `< $1` floor drops these (~90 rows on the current 4k scrape), but the proper fix is to add `LH_BIN=1` (Buy It Now only) to the eBay search URL — pending follow-up.
+- **Brand extraction on eBay uses a hardcoded known-brand list** in `ebay_scraper.py` (~150 entries, matched with non-letter lookarounds + curly-quote normalization). Long tail of small brands → "Unknown" rate is ~60% on eBay. Poshmark uses the platform's structured `brand` field directly.
+
+## Sprint 1 status
+
+- ✅ #2 eBay scraper (Playwright completed-listings rewrite)
+- ✅ #5 Poshmark handbag backfill (handbag 48 → 190)
+- ✅ #4 Cross-platform merge script
+- ⏳ #3 Depop scraper — not started
+- ⏳ #7 True Cost of Reselling — research, no-code
+
+Current dataset (post-merge): **5,100 rows** = 3,910 eBay + 1,190 Poshmark, across 8 categories.
