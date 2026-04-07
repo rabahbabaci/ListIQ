@@ -62,19 +62,27 @@ BRAND_ALIASES = {
 }
 
 
+# Brand values that platforms emit as a "no real brand" placeholder.
+# Treat these as missing so downstream modeling doesn't see them as a real brand.
+BRAND_PLACEHOLDERS = {"other", "unknown", "n/a", "none", "no brand", "unbranded"}
+
+
 def normalize_brand(brand):
     """Map brand variants to a canonical form.
 
     Case-insensitive on the alias key. Strips leading/trailing whitespace and
-    normalizes curly quotes/apostrophes before lookup. Unknown brands pass
-    through unchanged.
+    normalizes curly quotes/apostrophes before lookup. Platform placeholder
+    values like "Other" / "Unknown" / "Unbranded" are mapped to NaN so they
+    aren't treated as real brands. Unknown (real) brands pass through unchanged.
     """
     if not isinstance(brand, str):
         return brand
     cleaned = brand.strip().replace("\u2019", "'").replace("\u2018", "'")
     if not cleaned:
-        return brand
+        return np.nan
     key = cleaned.lower().rstrip(".")
+    if key in BRAND_PLACEHOLDERS:
+        return np.nan
     return BRAND_ALIASES.get(key, cleaned)
 
 
@@ -123,7 +131,12 @@ def clean(df):
 
     # 4. Parse condition from title
     parsed = df["title"].apply(parse_condition)
-    # Only overwrite "Unknown" conditions; keep any already-set values
+    # Only overwrite "Unknown" conditions; keep any already-set values.
+    # Cast to object first — when condition starts as all-null (e.g. Depop,
+    # which doesn't expose condition publicly), the column is inferred as
+    # float64 and a partial string assignment via .loc raises a pandas
+    # FutureWarning about incompatible dtypes.
+    df["condition"] = df["condition"].astype(object)
     unknown_mask = (df["condition"] == "Unknown") | df["condition"].isna()
     df.loc[unknown_mask & parsed.notna(), "condition"] = parsed[unknown_mask & parsed.notna()]
 
