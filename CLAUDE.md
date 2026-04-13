@@ -45,6 +45,8 @@ Raw scraper output goes to `data/raw/` (gitignored). Cleaned per-platform datase
 - `models/` — Trained model artifacts (gitignored `.pkl`/`.joblib`/`.h5`).
 - `notebooks/` — Jupyter notebooks for EDA and experimentation.
 - `demo/` — Streamlit app for the seller intelligence report.
+- `demo/fixtures/` — Pre-computed JSON outputs from `recommend_listing()` for the Lovable frontend demo. Regenerate with `python scripts/generate_demo_fixtures.py`.
+- `scripts/` — Utility scripts: `compute_router_constants.py` (price spread ratios), `generate_demo_fixtures.py` (demo JSON fixtures).
 
 ## Shared schema
 
