@@ -76,4 +76,4 @@ The merged file additionally has: `price_discount_pct`, `price_tier` (`budget` <
 - ✅ #3 Depop scraper (API + curl_cffi, 4 of 8 categories — see "Known data characteristics")
 - ⏳ #7 True Cost of Reselling — research, no-code
 
-Current dataset (post-merge): **5,100 rows** = 3,910 eBay + 1,190 Poshmark, across 8 categories. Depop adds **819 rows** across 4 categories on top of this once re-merged.
+Current dataset (post-merge): **5,919 rows** = 3,910 eBay + 1,190 Poshmark + 819 Depop, across 8 categories (Depop covers 4 of 8).
