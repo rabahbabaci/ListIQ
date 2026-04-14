@@ -33,7 +33,7 @@ Raw scraper output goes to `data/raw/` (gitignored). Cleaned per-platform datase
 
 ## Architecture
 
-**Pipeline:** Scrape → Clean → Merge → EDA → Model → Demo
+**Pipeline:** Scrape → Clean → Merge → EDA → Model → Route → Demo Fixtures
 
 - `scrapers/`
   - `ebay_scraper.py` — Playwright + `playwright-stealth` scraper of eBay's public completed/sold listings page (`LH_Complete=1&LH_Sold=1`). Two-pass collection per category (recency sort + lowest-price sort, deduped on `item_id`) to broaden `sold_date` coverage.
@@ -42,9 +42,9 @@ Raw scraper output goes to `data/raw/` (gitignored). Cleaned per-platform datase
   - `merge_data.py` — Reads every `*_cleaned.csv` in `data/cleaned/` (no hardcoded platform list — new platforms auto-include), drops `final_sale_price < $1`, normalizes condition as a safety net, adds `price_discount_pct` and `price_tier`, writes `all_platforms.csv`.
 - `data/raw/` — Gitignored raw CSVs from scrapers.
 - `data/cleaned/` — Per-platform cleaned CSVs + `all_platforms.csv` (unified, used for EDA/modeling).
-- `models/` — Trained model artifacts (gitignored `.pkl`/`.joblib`/`.h5`).
-- `notebooks/` — Jupyter notebooks for EDA and experimentation.
-- `demo/` — Streamlit app for the seller intelligence report.
+- `models/` — Trained model artifacts (gitignored `.joblib`) + `router.py` (platform routing algorithm) + `README.md` (model docs).
+- `notebooks/` — Jupyter notebooks: `01_eda.ipynb` (EDA), `02_pricing_model.ipynb` (XGBoost), `03_routing_evaluation.ipynb` (router validation), `04_polished_figures.ipynb` (presentation figures). Figures in `notebooks/figures/` (originals) and `notebooks/figures/final/` (polished 300 dpi).
+- `demo/` — Demo fixtures for the Lovable frontend.
 - `demo/fixtures/` — Pre-computed JSON outputs from `recommend_listing()` for the Lovable frontend demo. Regenerate with `python scripts/generate_demo_fixtures.py`.
 - `scripts/` — Utility scripts: `compute_router_constants.py` (price spread ratios), `generate_demo_fixtures.py` (demo JSON fixtures).
 
@@ -70,12 +70,15 @@ The merged file additionally has: `price_discount_pct`, `price_tier` (`budget` <
   - ❌ Not collected: `blazer`, `vintage t-shirt`, `leather jacket`, `crossbody bag` (Poshmark + eBay only)
   - **Cross-platform analysis should focus on the 4 fully-covered categories** (denim jacket, midi dress, sneakers, handbag) for the most robust three-way comparisons. The other 4 categories remain two-platform (Poshmark + eBay).
 
-## Sprint 1 status
+## Sprint status
 
-- ✅ #2 eBay scraper (Playwright completed-listings rewrite)
-- ✅ #5 Poshmark handbag backfill (handbag 48 → 190)
-- ✅ #4 Cross-platform merge script
-- ✅ #3 Depop scraper (API + curl_cffi, 4 of 8 categories — see "Known data characteristics")
-- ⏳ #7 True Cost of Reselling — research, no-code
+- **Sprint 1** (Data collection): ✅ eBay scraper, Poshmark scraper + handbag backfill, Depop scraper (4/8 categories), merge script. **5,919 rows** = 3,910 eBay + 1,190 Poshmark + 819 Depop.
+- **Sprint 2** (EDA): ✅ Platform-fit hypothesis tests, true cost of reselling, "don't sell" analysis, sell-velocity. 6 figures.
+- **Sprint 3** (Pricing model): ✅ XGBoost regression, MAE $53, MedAPE 50%. Artifacts: `models/pricing_model.joblib`, `models/feature_config.joblib` (gitignored — regenerate by running notebook 02).
+- **Sprint 4** (Platform routing): ✅ `models/router.py` — `recommend_listing()` with fit score, price tiers, net profit, Worth It verdict. 7/8 category routing accuracy vs EDA ground truth.
+- **Sprint 5** (Demo fixtures): ✅ 16 curated JSON fixtures in `demo/fixtures/` for the Lovable frontend. Pitch script in `demo/README.md`.
+- **Sprint 6/7** (Polish): ✅ 8 presentation-quality figures (300 dpi, new palette), README rewrite, reproducibility verification, issue cleanup.
 
-Current dataset (post-merge): **5,919 rows** = 3,910 eBay + 1,190 Poshmark + 819 Depop, across 8 categories (Depop covers 4 of 8).
+## Reproducibility note
+
+Model artifacts (`pricing_model.joblib`, `feature_config.joblib`) are gitignored. On a fresh clone, run `notebooks/02_pricing_model.ipynb` to train the model before using the router or generating demo fixtures.
